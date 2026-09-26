@@ -158,3 +158,10 @@ describe("accounts, manual trades and editing", () => {
     await expect(deleteAccount(u2.id, acct.id)).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
+
+describe("demo workspace isolation", () => {
+  it("the demo email can't be registered by a real user", async () => {
+    const { registerUser } = await import("@/services/users");
+    await expect(registerUser({ email: "Demo@TradePilot.local", password: "some-password-1" })).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+});

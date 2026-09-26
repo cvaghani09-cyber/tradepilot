@@ -1,5 +1,7 @@
 "use server";
 import { headers } from "next/headers";
+import { eq } from "drizzle-orm";
+import { db, schema } from "@/db";
 import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/auth";
 import { registerUser } from "@/services/users";
@@ -45,7 +47,12 @@ export async function loginAction(input: { email: string; password: string }): P
 /** Sign in to the seeded demo workspace (a separate user — never mixed with real data). */
 export async function demoLoginAction(): Promise<ActionResult<null>> {
   try {
-    const email = process.env.DEMO_USER_EMAIL || "demo@tradepilot.local";
+    const email = (process.env.DEMO_USER_EMAIL || "demo@tradepilot.local").toLowerCase();
+    // Only ever sign into an account flagged as demo
+    const [demo] = await db.select({ isDemo: schema.users.isDemo }).from(schema.users).where(eq(schema.users.email, email));
+    if (!demo?.isDemo) {
+      return { ok: false, error: { code: "NOT_FOUND", message: "The demo workspace hasn't been set up. Run `pnpm db:seed` to create it." } };
+    }
     await signIn("credentials", { email, password: process.env.DEMO_USER_PASSWORD || "demo-password-not-secret", redirect: false });
     return { ok: true, data: null };
   } catch (e) {

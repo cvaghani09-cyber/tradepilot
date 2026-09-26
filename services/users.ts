@@ -62,6 +62,11 @@ export async function bootstrapUser(userId: string, tx: Tx = db) {
 
 export async function registerUser(input: { email: string; password: string; name?: string | null; isDemo?: boolean }) {
   const email = input.email.trim().toLowerCase();
+  // The demo address is reserved so nobody can register it and receive demo sign-ins
+  const demoEmail = (process.env.DEMO_USER_EMAIL || "demo@tradepilot.local").toLowerCase();
+  if (email === demoEmail && !input.isDemo) {
+    throw new AppError("CONFLICT", "This email address is reserved. Use a different one.", { email: "Reserved address" });
+  }
   const [existing] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, email));
   if (existing) throw new AppError("CONFLICT", "An account with this email already exists. Sign in instead.", { email: "Already registered" });
   const passwordHash = await hashPassword(input.password);
