@@ -3,6 +3,10 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
+ * Profit/loss pair validated for colour-vision deficiency (deutan ΔE ≥ 11.7) in both
+ * modes with the dataviz palette validator; sign (+/−) and baseline position are
+ * always present as secondary encoding.
+ *
  * TradePilot design tokens
  * Dark-first. Color is reserved for meaning: profit, loss, warning, info, selection.
  */
@@ -20,10 +24,10 @@
   --primary-hover: #3e4dc4;
   --primary-fg: #ffffff;
   --primary-soft: rgb(74 90 216 / 0.1);
-  --profit: #0c8f5a;
-  --profit-soft: rgb(12 143 90 / 0.1);
-  --loss: #d23a4b;
-  --loss-soft: rgb(210 58 75 / 0.1);
+  --profit: #0e8a82;
+  --profit-soft: rgb(14 138 130 / 0.1);
+  --loss: #d9483a;
+  --loss-soft: rgb(217 72 58 / 0.1);
   --warning: #b7791f;
   --warning-soft: rgb(183 121 31 / 0.12);
   --info: #2f6fd6;
@@ -48,10 +52,10 @@
   --primary-hover: #97a3ff;
   --primary-fg: #0a0d12;
   --primary-soft: rgb(131 145 255 / 0.12);
-  --profit: #34c68b;
-  --profit-soft: rgb(52 198 139 / 0.12);
-  --loss: #f06272;
-  --loss-soft: rgb(240 98 114 / 0.12);
+  --profit: #22a79d;
+  --profit-soft: rgb(34 167 157 / 0.13);
+  --loss: #e25e4a;
+  --loss-soft: rgb(226 94 74 / 0.13);
   --warning: #e3a642;
   --warning-soft: rgb(227 166 66 / 0.12);
   --info: #5aa2ff;

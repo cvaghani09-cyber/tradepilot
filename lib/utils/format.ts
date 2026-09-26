@@ -23,7 +23,7 @@ export function fmtNum(n: number | null | undefined, digits = 2) {
 
 export function fmtPrice(n: number | null | undefined) {
   if (n == null || !Number.isFinite(n)) return DASH;
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 6, minimumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 4, minimumFractionDigits: 2 }).format(n);
 }
 
 export function fmtPct(n: number | null | undefined, digits = 1) {

@@ -56,6 +56,8 @@ export type GroupStats = {
   totalR: number | null;
   avgR: number | null;
   expectancyR: number | null;
+  /** trades with an initial risk recorded */
+  rTrades: number;
   avgDurationSec: number | null;
   fees: number;
 };
@@ -89,6 +91,7 @@ export function deriveStats(a: AggRow): GroupStats {
     totalR: a.totalR == null ? null : roundTo(a.totalR, 2),
     avgR: rc ? roundTo((a.totalR ?? 0) / rc, 3) : null,
     expectancyR: expectancyR == null ? null : roundTo(expectancyR, 3),
+    rTrades: rc,
     avgDurationSec: a.avgDuration == null ? null : Math.round(a.avgDuration),
     fees: round2(a.fees),
   };

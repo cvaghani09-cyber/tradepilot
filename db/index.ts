@@ -5,7 +5,6 @@ import * as schema from "./schema";
 export type DB = PostgresJsDatabase<typeof schema>;
 
 declare global {
-  // eslint-disable-next-line no-var
   var __tpSql: ReturnType<typeof postgres> | undefined;
 }
 
