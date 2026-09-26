@@ -2,8 +2,33 @@ import { cn } from "@/lib/utils/cn";
 import { fmtDuration, fmtMoney, fmtPct, fmtR, fmtRatio } from "@/lib/utils/format";
 import type { GroupRow } from "@/services/analytics";
 
-export function GroupTable({ rows, first, showDuration }: { rows: GroupRow[]; first: string; showDuration?: boolean }) {
+export function GroupTable({ rows, first, showDuration, compact }: { rows: GroupRow[]; first: string; showDuration?: boolean; compact?: boolean }) {
   if (!rows.length) return <p className="px-4 py-8 text-center text-xs text-muted">No closed trades match these filters.</p>;
+  if (compact) {
+    return (
+      <table className="w-full text-[13px]">
+        <thead>
+          <tr className="text-[11px] uppercase tracking-wide text-faint">
+            <th scope="col" className="h-9 border-b border-border px-4 text-left font-medium">{first}</th>
+            {["Trades", "Win", "Net", "Avg R"].map((c) => (
+              <th key={c} scope="col" className="h-9 border-b border-border px-2 text-right font-medium last:pr-4">{c}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key} className="border-b border-border last:border-0">
+              <th scope="row" className="h-10 px-4 text-left font-medium">{r.label}</th>
+              <td className="num px-2 text-right">{r.trades}</td>
+              <td className="num px-2 text-right">{fmtPct(r.winRate, 0)}</td>
+              <td className={cn("num px-2 text-right font-medium", r.netPnl > 0 ? "text-profit" : r.netPnl < 0 ? "text-loss" : "")}>{fmtMoney(r.netPnl, { sign: true, compact: true })}</td>
+              <td className="num px-2 pr-4 text-right">{fmtR(r.avgR)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
   const cols = ["Trades", "Win rate", "Net P&L", "Avg P&L", "Avg win", "Avg loss", "Profit factor", "Expectancy", "Avg R", ...(showDuration ? ["Avg hold"] : [])];
   return (
     <div className="scrollbar-thin overflow-x-auto">

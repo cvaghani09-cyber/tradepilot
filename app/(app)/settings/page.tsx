@@ -19,7 +19,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         profile={{ name: user.name, email: user.email, timezone: user.timezone, currency: user.currency, isDemo: user.isDemo }}
         sessions={sessions.map((s) => ({ id: s.id, name: s.name, timezone: s.timezone, startMinute: s.startMinute, endMinute: s.endMinute, color: s.color }))}
         instruments={instruments.map((i) => ({ id: i.id, symbol: i.symbol, name: i.name, exchange: i.exchange, tickSize: i.tickSize, tickValue: i.tickValue, pointValue: i.pointValue, currency: i.currency, isCustom: i.isCustom, overridesDefault: i.overridesDefault }))}
-        tags={tags.categories.map((c) => ({ id: c.id, name: c.name, systemKey: c.systemKey, tags: c.tags.map((t) => ({ id: t.id, name: t.name, color: t.color })) }))}
+        tags={tags.categories.map((c) => ({ id: c.id, name: c.name, systemKey: c.systemKey, tags: c.tags.map((t) => ({ id: t.id, name: t.name, color: t.color, parentId: t.parentId })) }))}
       />
     </div>
   );

@@ -491,19 +491,42 @@ export const dailyReviews = pgTable(
   (t) => [uniqueIndex("daily_reviews_user_date").on(t.userId, t.date)],
 );
 
-export const playbooks = pgTable("playbooks", {
-  id: id(),
-  userId: userRef(),
-  strategyId: uuid("strategy_id").references(() => strategies.id, { onDelete: "set null" }),
-  name: text("name").notNull(),
-  description: text("description"),
-  rules: text("rules"),
-  idealConditions: text("ideal_conditions"),
-  invalidConditions: text("invalid_conditions"),
-  stopPlacement: text("stop_placement"),
-  targetRules: text("target_rules"),
-  ...timestamps,
-});
+export const playbooks = pgTable(
+  "playbooks",
+  {
+    id: id(),
+    userId: userRef(),
+    strategyId: uuid("strategy_id").references(() => strategies.id, { onDelete: "set null" }),
+    /** Optional narrower scope: statistics use strategy AND setup when set */
+    setupId: uuid("setup_id").references(() => setups.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    rules: text("rules"),
+    idealConditions: text("ideal_conditions"),
+    invalidConditions: text("invalid_conditions"),
+    stopPlacement: text("stop_placement"),
+    targetRules: text("target_rules"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("playbooks_user_name").on(t.userId, t.name)],
+);
+
+/** Trades the user pins to a playbook as reference examples. */
+export const playbookExamples = pgTable(
+  "playbook_examples",
+  {
+    id: id(),
+    playbookId: uuid("playbook_id")
+      .notNull()
+      .references(() => playbooks.id, { onDelete: "cascade" }),
+    tradeId: uuid("trade_id")
+      .notNull()
+      .references(() => trades.id, { onDelete: "cascade" }),
+    note: text("note"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("playbook_examples_unique").on(t.playbookId, t.tradeId)],
+);
 
 export type ChecklistItem = { id: string; label: string };
 
@@ -513,6 +536,7 @@ export const checklists = pgTable("checklists", {
   playbookId: uuid("playbook_id").references(() => playbooks.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   items: jsonb("items").$type<ChecklistItem[]>().notNull().default([]),
+  /** When true, manually entered trades must complete this checklist before saving */
   required: boolean("required").notNull().default(false),
   ...timestamps,
 });
@@ -528,6 +552,8 @@ export const checklistResponses = pgTable(
       .notNull()
       .references(() => trades.id, { onDelete: "cascade" }),
     answers: jsonb("answers").$type<Record<string, boolean>>().notNull().default({}),
+    /** Every item checked at the time of saving (denormalised for analytics) */
+    completed: boolean("completed").notNull().default(false),
     ...timestamps,
   },
   (t) => [uniqueIndex("checklist_responses_unique").on(t.checklistId, t.tradeId)],
@@ -679,4 +705,19 @@ export const setupsRelations = relations(setups, ({ one }) => ({
 export const screenshotsRelations = relations(screenshots, ({ one, many }) => ({
   trade: one(trades, { fields: [screenshots.tradeId], references: [trades.id] }),
   annotations: many(annotations),
+}));
+
+export const playbooksRelations = relations(playbooks, ({ one, many }) => ({
+  strategy: one(strategies, { fields: [playbooks.strategyId], references: [strategies.id] }),
+  setup: one(setups, { fields: [playbooks.setupId], references: [setups.id] }),
+  examples: many(playbookExamples),
+  checklists: many(checklists),
+}));
+export const playbookExamplesRelations = relations(playbookExamples, ({ one }) => ({
+  playbook: one(playbooks, { fields: [playbookExamples.playbookId], references: [playbooks.id] }),
+  trade: one(trades, { fields: [playbookExamples.tradeId], references: [trades.id] }),
+}));
+export const checklistsRelations = relations(checklists, ({ one, many }) => ({
+  playbook: one(playbooks, { fields: [checklists.playbookId], references: [playbooks.id] }),
+  responses: many(checklistResponses),
 }));

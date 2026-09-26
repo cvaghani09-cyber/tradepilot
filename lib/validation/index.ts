@@ -74,6 +74,7 @@ export const manualTradeSchema = z
     setupId: uuid.nullable().optional(),
     notes: optText(20000),
     tagIds: z.array(uuid).max(50).optional(),
+    checklists: z.record(uuid, z.record(z.string().max(40), z.boolean())).optional(),
   })
   .refine((v) => (v.exitPrice == null) === (v.exitAt == null), { message: "Provide both exit price and exit time, or neither", path: ["exitPrice"] })
   .refine((v) => !v.exitAt || v.exitAt >= v.entryAt, { message: "Exit must be after entry", path: ["exitAt"] });
@@ -168,3 +169,30 @@ export const importConfirmSchema = z.object({
   jobId: uuid,
   strategy: z.enum(["SKIP", "IMPORT", "MERGE"]),
 });
+
+// ───────────────────────────── Phase 5 ─────────────────────────────
+
+export const playbookSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(120),
+  strategyId: uuid.nullable().optional(),
+  setupId: uuid.nullable().optional(),
+  description: optText(8000),
+  rules: optText(8000),
+  idealConditions: optText(8000),
+  invalidConditions: optText(8000),
+  stopPlacement: optText(8000),
+  targetRules: optText(8000),
+});
+
+export const checklistSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80),
+  playbookId: uuid.nullable().optional(),
+  required: z.boolean(),
+  items: z
+    .array(z.object({ id: z.string().max(40).optional(), label: z.string().max(200) }))
+    .max(40, "At most 40 items"),
+});
+
+export const checklistAnswersSchema = z.record(z.string().max(40), z.boolean());
+
+export const tradingPlanSchema = z.record(z.string().max(40), z.string().max(20000));

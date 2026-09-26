@@ -33,8 +33,8 @@ export const NAV_MAIN: NavItem[] = [
 export const NAV_PLAN: NavItem[] = [
   { href: "/strategies", label: "Strategies", icon: Layers },
   { href: "/journal", label: "Journal", icon: NotebookPen, soon: true },
-  { href: "/playbook", label: "Playbook", icon: BookOpen, soon: true },
-  { href: "/plan", label: "Trading plan", icon: ClipboardList, soon: true },
+  { href: "/playbook", label: "Playbook", icon: BookOpen },
+  { href: "/plan", label: "Trading plan", icon: ClipboardList },
   { href: "/reports", label: "Reports", icon: FileText, soon: true },
 ];
 export const NAV_DATA: NavItem[] = [

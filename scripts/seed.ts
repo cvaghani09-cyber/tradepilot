@@ -14,6 +14,9 @@ import { db, schema, sqlClient } from "@/db";
 import { registerUser } from "@/services/users";
 import { createAccount } from "@/services/accounts";
 import { createStrategy, createSetup } from "@/services/strategies";
+import { createPlaybook, addPlaybookExample } from "@/services/playbooks";
+import { createChecklist, saveChecklistResponse } from "@/services/checklists";
+import { saveTradingPlan } from "@/services/trading-plan";
 import { InstrumentResolver, ensureDefaultInstruments } from "@/services/instruments";
 import { rebuildStreams } from "@/services/reconstruction";
 import { batchFingerprints } from "@/lib/calculations/dedupe";
@@ -298,6 +301,49 @@ async function main() {
         .where(eq(schema.trades.id, t.id));
       if (g.tagIds.length) await tx.insert(schema.tradeTags).values(g.tagIds.map((tagId) => ({ tradeId: t.id, tagId }))).onConflictDoNothing();
     }
+  });
+
+  // ── Playbook, checklist and trading plan (Phase 5) ──
+  const pb = await createPlaybook(uid, {
+    name: "SMT + CISD + FVG at HTF level",
+    strategyId: smt.id,
+    setupId: setupA.id,
+    description: "Example entry (editable): divergence at a higher-timeframe level, confirmed by a change in state of delivery, entered on the first fair value gap.",
+    rules: "1. Mark HTF (1H/4H) levels and the draw on liquidity\n2. Wait for SMT divergence at the level\n3. Require CISD on the execution timeframe\n4. Enter on the first FVG in the new direction",
+    idealConditions: "New York Open, clean displacement, liquidity taken just before the SMT",
+    invalidConditions: "High-impact news within 15 minutes; no clear HTF level; chop inside the prior day's range",
+    stopPlacement: "Beyond the swing that formed the SMT",
+    targetRules: "Opposing liquidity; optional partial at 1R",
+  });
+  const cl = await createChecklist(uid, {
+    name: "Before entering",
+    playbookId: pb.id,
+    required: false,
+    items: ["HTF level identified", "Liquidity identified", "SMT confirmed", "CISD confirmed", "FVG identified", "Correct session", "Risk calculated", "Stop placed", "Target defined", "No emotional trading"].map((label) => ({ label })),
+  });
+  const smtTrades = await db
+    .select({ id: schema.trades.id, netPnl: schema.trades.netPnl })
+    .from(schema.trades)
+    .where(and(eq(schema.trades.userId, uid), eq(schema.trades.strategyId, smt.id)));
+  for (const t of smtTrades) {
+    if (rand() < 0.35) continue; // no checklist recorded
+    const skip = rand() < 0.4 ? cl.items[Math.floor(rand() * cl.items.length)]!.id : null;
+    await saveChecklistResponse(uid, t.id, cl.id, Object.fromEntries(cl.items.map((i) => [i.id, i.id !== skip])));
+  }
+  const sorted = [...smtTrades].sort((a, b) => b.netPnl - a.netPnl);
+  for (const t of [...sorted.slice(0, 2), ...sorted.slice(-2)]) await addPlaybookExample(uid, pb.id, t.id, t.netPnl > 0 ? "Clean execution" : "Took it before CISD");
+  await saveTradingPlan(uid, {
+    markets: "NQ and MNQ only.",
+    sessions: "New York Open (09:30–11:00 ET). Occasional London when there's a clear HTF setup.",
+    setups: "Only setups in the playbook. No discretionary trades.",
+    risk: "Risk 0.5% of the account per trade. Reduce size after two consecutive losses.",
+    dailyLossLimit: "1000",
+    maxTradesPerDay: "3",
+    entryRules: "All checklist items ticked before entry.",
+    exitRules: "Stop never moved further away. Take partials at 1R when in profit.",
+    noTrade: "15 minutes either side of high-impact news. After hitting the daily loss limit.",
+    psychology: "Walk away for 15 minutes after any loss larger than 1R.",
+    goals: "Follow the plan on 90% of trading days this month.",
   });
 
   const [{ n }] = (await sqlClient`select count(*)::int as n from trades where user_id = ${uid}`) as unknown as [{ n: number }];

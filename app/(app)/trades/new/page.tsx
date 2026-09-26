@@ -4,6 +4,7 @@ import { requirePageUser } from "@/lib/auth/session";
 import { listAccounts } from "@/services/accounts";
 import { listInstruments } from "@/services/instruments";
 import { listStrategies, listSetups } from "@/services/strategies";
+import { listChecklists } from "@/services/checklists";
 import { Button } from "@/components/ui/button";
 import { EmptyState, PageHeader, Panel } from "@/components/ui/misc";
 import { ManualTradeForm } from "@/components/trades/manual-trade-form";
@@ -12,7 +13,7 @@ export const metadata = { title: "Add trade" };
 
 export default async function NewTradePage() {
   const user = await requirePageUser();
-  const [accounts, instruments, strategies, setups] = await Promise.all([listAccounts(user.id), listInstruments(user.id), listStrategies(user.id), listSetups(user.id)]);
+  const [accounts, instruments, strategies, setups, checklists] = await Promise.all([listAccounts(user.id), listInstruments(user.id), listStrategies(user.id), listSetups(user.id), listChecklists(user.id)]);
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <Button asChild variant="ghost" size="sm">
@@ -41,6 +42,7 @@ export default async function NewTradePage() {
           instruments={instruments.map((i) => ({ symbol: i.symbol, name: i.name, tickSize: i.tickSize, tickValue: i.tickValue }))}
           strategies={strategies.map((s) => ({ id: s.id, name: s.name }))}
           setups={setups.map((s) => ({ id: s.id, name: s.name, strategyId: s.strategyId }))}
+          checklists={checklists.map((c) => ({ id: c.id, name: c.name, items: c.items, required: c.required, strategyId: c.strategyId }))}
         />
       )}
     </div>

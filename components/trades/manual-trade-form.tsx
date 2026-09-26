@@ -26,12 +26,14 @@ export function ManualTradeForm({
   instruments,
   strategies,
   setups,
+  checklists = [],
 }: {
   tz: string;
   accounts: { id: string; name: string }[];
   instruments: Inst[];
   strategies: { id: string; name: string }[];
   setups: { id: string; name: string; strategyId: string | null }[];
+  checklists?: { id: string; name: string; items: { id: string; label: string }[]; required: boolean; strategyId: string | null }[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -55,6 +57,10 @@ export function ManualTradeForm({
     notes: "",
   });
   const set = (k: keyof typeof f, v: string) => setF((s) => ({ ...s, [k]: v }));
+  const [answers, setAnswers] = useState<Record<string, Record<string, boolean>>>({});
+  const [extraChecklist, setExtraChecklist] = useState("");
+  const shownChecklists = checklists.filter((c) => c.required || (f.strategyId && c.strategyId === f.strategyId) || c.id === extraChecklist);
+  const otherChecklists = checklists.filter((c) => !shownChecklists.includes(c));
 
   const inst = useMemo(() => {
     const root = resolveRootSymbol(f.contract, instruments.map((i) => i.symbol));
@@ -95,6 +101,7 @@ export function ManualTradeForm({
             strategyId: f.strategyId || null,
             setupId: f.setupId || null,
             notes: f.notes || null,
+            checklists: Object.fromEntries(shownChecklists.filter((c) => c.required || answers[c.id]).map((c) => [c.id, answers[c.id] ?? {}])),
           });
           if (!r.ok) {
             setFe(r.error.fieldErrors ?? {});
@@ -202,6 +209,57 @@ export function ManualTradeForm({
           </Field>
         </div>
       </Panel>
+      {checklists.length > 0 && (
+        <Panel>
+          <PanelHeader
+            title="Pre-trade checklist"
+            description={checklists.some((c) => c.required) ? "Required checklists must be fully checked before the trade can be saved." : "Optional — record whether you followed your process."}
+            actions={
+              otherChecklists.length > 0 && (
+                <NativeSelect aria-label="Add checklist" value="" onChange={(e) => setExtraChecklist(e.target.value)} className="h-7 w-44 text-xs">
+                  <option value="">Add a checklist…</option>
+                  {otherChecklists.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </NativeSelect>
+              )
+            }
+          />
+          <div className="space-y-4 p-4">
+            {shownChecklists.length === 0 && <p className="text-xs text-muted">Choose a strategy to see its checklist, or add one above.</p>}
+            {shownChecklists.map((c) => {
+              const a = answers[c.id] ?? {};
+              const done = c.items.filter((i) => a[i.id]).length;
+              return (
+                <fieldset key={c.id}>
+                  <legend className="mb-1.5 flex items-center gap-2 text-[13px] font-medium">
+                    {c.name}
+                    {c.required && <span className="rounded bg-warning-soft px-1.5 text-[11px] text-warning">Required</span>}
+                    <span className="num text-xs font-normal text-muted">
+                      {done}/{c.items.length}
+                    </span>
+                  </legend>
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    {c.items.map((it) => (
+                      <label key={it.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-[13px] hover:bg-surface-2">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-[var(--primary)]"
+                          checked={!!a[it.id]}
+                          onChange={(e) => setAnswers({ ...answers, [c.id]: { ...a, [it.id]: e.target.checked } })}
+                        />
+                        {it.label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              );
+            })}
+          </div>
+        </Panel>
+      )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={() => router.back()}>
           Cancel

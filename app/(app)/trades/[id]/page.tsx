@@ -16,6 +16,9 @@ import { Stat } from "@/components/dashboard/stat";
 import { TradeJournal } from "@/components/trades/trade-journal";
 import { ExecutionTimeline } from "@/components/trades/execution-timeline";
 import { DeleteTradeButton } from "@/components/trades/delete-trade-button";
+import { TradeChecklists, PlaybookPins } from "@/components/trades/trade-checklists";
+import { checklistsForTrade } from "@/services/checklists";
+import { playbooksForTrade } from "@/services/playbooks";
 import { fmtDate, fmtDateTime, fmtDuration, fmtMoney, fmtNum, fmtPrice, fmtR, pnlTone } from "@/lib/utils/format";
 
 export const metadata = { title: "Trade" };
@@ -31,12 +34,14 @@ export default async function TradePage({ params }: { params: Promise<{ id: stri
     if (e instanceof AppError && e.code === "NOT_FOUND") notFound();
     throw e;
   }
-  const [adj, strategies, setups, tagTree, sessions] = await Promise.all([
+  const [adj, strategies, setups, tagTree, sessions, checklists, pins] = await Promise.all([
     getAdjacentTradeIds(user.id, trade),
     listStrategies(user.id, { includeArchived: true }),
     listSetups(user.id),
     listTagTree(user.id),
     listSessions(user.id),
+    checklistsForTrade(user.id, trade.id, trade.strategyId),
+    playbooksForTrade(user.id, trade.id),
   ]);
   const tz = user.timezone;
   const inSessions = sessions.filter((s) => inWindow(minuteOfDay(trade.openedAt, s.timezone), s.startMinute, s.endMinute)).map((s) => s.name);
@@ -164,6 +169,11 @@ export default async function TradePage({ params }: { params: Promise<{ id: stri
               </table>
             </div>
           </Panel>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <TradeChecklists tradeId={trade.id} checklists={checklists} />
+            <PlaybookPins tradeId={trade.id} playbooks={pins} />
+          </div>
 
           <Panel>
             <PanelHeader title="Screenshots" description="Before, entry, exit and post-trade images" />

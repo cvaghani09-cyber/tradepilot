@@ -25,7 +25,7 @@ import { formatMinute } from "@/lib/calculations/time";
 
 type Session = { id: string; name: string; timezone: string; startMinute: number; endMinute: number; color: string };
 type Instrument = { id: string; symbol: string; name: string; exchange: string; tickSize: number; tickValue: number; pointValue: number; currency: string; isCustom: boolean; overridesDefault: boolean };
-type TagCat = { id: string; name: string; systemKey: string | null; tags: { id: string; name: string; color: string }[] };
+type TagCat = { id: string; name: string; systemKey: string | null; tags: { id: string; name: string; color: string; parentId: string | null }[] };
 
 const ZONES = ["America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles", "America/Toronto", "America/Halifax", "Europe/London", "Europe/Berlin", "Asia/Dubai", "Asia/Kolkata", "Asia/Singapore", "Asia/Tokyo", "Australia/Sydney", "UTC"];
 
@@ -340,30 +340,64 @@ function Tags({ cats }: { cats: TagCat[] }) {
                   </Button>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {c.tags.map((t) => (
-                  <span key={t.id} className="inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-xs">
-                    <span className="size-1.5 rounded-full" style={{ background: t.color }} />
-                    {t.name}
-                    <button type="button" aria-label={`Delete tag ${t.name}`} className="text-faint hover:text-loss" onClick={() => run(() => deleteTagAction(t.id))}>
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
-                <form
-                  className="inline-flex gap-1"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    run(() => createTagAction({ name: drafts[c.id] ?? "", categoryId: c.id }), undefined, () => setDrafts({ ...drafts, [c.id]: "" }));
-                  }}
-                >
-                  <Input value={drafts[c.id] ?? ""} onChange={(e) => setDrafts({ ...drafts, [c.id]: e.target.value })} placeholder="Add tag" aria-label={`Add tag to ${c.name}`} className="h-6 w-28 text-xs" />
-                </form>
-              </div>
+              <TagTree
+                cat={c}
+                onDelete={(id) => run(() => deleteTagAction(id))}
+                onAdd={(name, parentId) => run(() => createTagAction({ name, categoryId: c.id, parentId }), undefined, () => setDrafts({ ...drafts, [c.id]: "" }))}
+                draft={drafts[c.id] ?? ""}
+                setDraft={(v) => setDrafts({ ...drafts, [c.id]: v })}
+              />
             </li>
           ))}
         </ul>
       </Panel>
+    </div>
+  );
+}
+
+/** Tags within a category, children nested under their parent (e.g. Entry › FVG › Inverse FVG). */
+function TagTree({ cat, onDelete, onAdd, draft, setDraft }: { cat: TagCat; onDelete: (id: string) => void; onAdd: (name: string, parentId: string | null) => void; draft: string; setDraft: (v: string) => void }) {
+  const [parent, setParent] = useState("");
+  const children = (pid: string | null) => cat.tags.filter((t) => (t.parentId ?? null) === pid || (pid === null && t.parentId && !cat.tags.some((x) => x.id === t.parentId)));
+  const render = (pid: string | null, depth: number): React.ReactNode =>
+    children(pid).map((t) => (
+      <div key={t.id} style={{ marginLeft: depth * 16 }}>
+        <span className="my-0.5 inline-flex h-6 items-center gap-1 rounded border border-border px-1.5 text-xs">
+          {depth > 0 && <span className="text-faint">↳</span>}
+          <span className="size-1.5 rounded-full" style={{ background: t.color }} />
+          {t.name}
+          <button type="button" aria-label={`Delete tag ${t.name}`} className="text-faint hover:text-loss" onClick={() => onDelete(t.id)}>
+            <X className="size-3" />
+          </button>
+        </span>
+        {render(t.id, depth + 1)}
+      </div>
+    ));
+  return (
+    <div className="space-y-2">
+      <div>{cat.tags.length ? render(null, 0) : <p className="text-xs text-faint">No tags yet.</p>}</div>
+      <form
+        className="flex flex-wrap items-center gap-1.5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (draft.trim()) onAdd(draft.trim(), parent || null);
+        }}
+      >
+        <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add tag" aria-label={`Add tag to ${cat.name}`} className="h-7 w-36 text-xs" />
+        {cat.tags.length > 0 && (
+          <NativeSelect aria-label="Nest under" value={parent} onChange={(e) => setParent(e.target.value)} className="h-7 w-40 text-xs">
+            <option value="">Top level</option>
+            {cat.tags.map((t) => (
+              <option key={t.id} value={t.id}>
+                Under {t.name}
+              </option>
+            ))}
+          </NativeSelect>
+        )}
+        <Button type="submit" size="sm" disabled={!draft.trim()}>
+          <Plus /> Add
+        </Button>
+      </form>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import type { Filters } from "@/lib/analytics/filters";
 import { assertAccountOwner } from "./accounts";
 import { InstrumentResolver } from "./instruments";
 import { rebuildStreams } from "./reconstruction";
+import { requiredChecklists, saveChecklistResponse, scoreAnswers } from "./checklists";
 
 const T = schema.trades;
 
@@ -216,6 +217,8 @@ export type ManualTradeInput = {
   setupId?: string | null;
   notes?: string | null;
   tagIds?: string[];
+  /** Pre-trade checklist responses: checklistId → { itemId: checked } */
+  checklists?: Record<string, Record<string, boolean>>;
 };
 
 export async function createManualTrade(userId: string, input: ManualTradeInput): Promise<string> {
@@ -237,6 +240,13 @@ export async function createManualTrade(userId: string, input: ManualTradeInput)
   }
   if (input.exitAt && input.exitAt < input.entryAt) {
     throw new AppError("VALIDATION", "Exit time must be after entry time.", { exitAt: "Before entry" });
+  }
+  // Required checklists must be fully completed before a manual trade can be saved
+  const required = await requiredChecklists(userId);
+  for (const cl of required) {
+    if (!scoreAnswers(cl.items, input.checklists?.[cl.id] ?? {}).completed) {
+      throw new AppError("VALIDATION", `Complete every item in the required checklist "${cl.name}" before saving.`, { checklists: "Checklist incomplete" });
+    }
   }
 
   // Fees: explicit amounts are split evenly across the fills; otherwise use the schedule
@@ -326,6 +336,9 @@ export async function createManualTrade(userId: string, input: ManualTradeInput)
         .insert(schema.tradeTags)
         .values([...new Set(input.tagIds)].map((tagId) => ({ tradeId: trade.id, tagId })))
         .onConflictDoNothing();
+    }
+    for (const [checklistId, answers] of Object.entries(input.checklists ?? {})) {
+      await saveChecklistResponse(userId, trade.id, checklistId, answers, tx);
     }
     return trade.id;
   });

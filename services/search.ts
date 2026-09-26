@@ -59,6 +59,6 @@ export async function globalSearch(userId: string, raw: string): Promise<SearchH
     ...strategies.map((s) => ({ type: "strategy" as const, id: s.id, title: s.name, href: `/strategies/${s.id}` })),
     ...tags.map((t) => ({ type: "tag" as const, id: t.id, title: t.name, subtitle: "Filter trades by tag", href: `/trades?tags=${t.id}` })),
     ...journals.map((j) => ({ type: "journal" as const, id: j.id, title: `Journal · ${j.date}`, href: `/calendar?day=${j.date}` })),
-    ...playbooks.map((p) => ({ type: "playbook" as const, id: p.id, title: p.name, href: `/playbook` })),
+    ...playbooks.map((p) => ({ type: "playbook" as const, id: p.id, title: p.name, href: `/playbook/${p.id}` })),
   ];
 }

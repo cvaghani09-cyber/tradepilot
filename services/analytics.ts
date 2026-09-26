@@ -499,3 +499,25 @@ export function describeRange(f: Filters, tz: string) {
   const { from, to } = resolveDateRange(f, tz);
   return { from, to };
 }
+
+// ───────────────────────────── checklist adherence ─────────────────────────────
+
+/**
+ * Performance split by whether a pre-trade checklist was completed.
+ * With a checklistId only that checklist counts; otherwise any checklist.
+ */
+export async function getChecklistAdherence(ctx: QueryContext, f: Filters, checklistId?: string | null): Promise<GroupRow[]> {
+  const where = whereOf(ctx, f, { closedOnly: true });
+  const R = schema.checklistResponses;
+  const scope = checklistId ? sql`and ${R.checklistId} = ${checklistId}` : sql``;
+  const completed = sql`exists (select 1 from ${R} where ${R.tradeId} = ${T.id} and ${R.completed} ${scope})`;
+  const partial = sql`exists (select 1 from ${R} where ${R.tradeId} = ${T.id} ${scope}) and not ${completed}`;
+  const none = sql`not exists (select 1 from ${R} where ${R.tradeId} = ${T.id} ${scope})`;
+  const groups = [
+    { key: "completed", label: "Completed", cond: completed },
+    { key: "partial", label: "Incomplete", cond: partial },
+    { key: "none", label: "No checklist", cond: none },
+  ];
+  const rows = await Promise.all(groups.map(async (g, i) => ({ ...(await aggregate(and(where, g.cond))), key: g.key, label: g.label, sort: i })));
+  return rows.filter((r) => r.trades > 0);
+}
